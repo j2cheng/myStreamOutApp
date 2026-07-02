@@ -1,0 +1,98 @@
+apply plugin: 'com.android.application'
+apply plugin: 'com.google.protobuf'
+
+android {
+    sourceSets {
+        main {
+            proto {
+                srcDir 'src/main/grpc/protos'
+            }
+            // Pick up libgstreamer_android.so + libc++_shared.so produced by
+            // ndk-build (invoked from src/main/cpp/CMakeLists.txt against
+            // src/main/gst/jni/Android.mk) so they get packaged inside the APK.
+            jniLibs.srcDirs += 'src/main/gst/libs'
+            // NOTE: intentionally do NOT add 'src/main/gst/src' to java.srcDirs.
+            // The auto-generated GStreamer.java / GstAhcCallback.java collide
+            // with the hand-edited copies under src/main/java (which live in the
+            // com.crestron.streamout directory but declare the org.freedesktop.gstreamer
+            // package). The hand-edited copies deliberately skip copyFonts() /
+            // copyCaCertificates() and are what this app must use.
+        }
+    }
+    namespace 'com.crestron.streamout'
+    packagingOptions {
+        exclude 'META-INF/INDEX.LIST'
+        exclude 'META-INF/io.netty.versions.properties'
+        // AGP already ships libc++_shared from the NDK; ndk-build produces
+        // an identical copy under src/main/libs. Keep whichever appears first.
+        pickFirst '**/libc++_shared.so'
+    }
+    compileSdk 32
+    ndkVersion "30.0.14904198"
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    defaultConfig {
+        applicationId "com.crestron.streamout"
+        minSdk 30
+        targetSdk 32
+        versionCode 1
+        versionName "1.0"
+        // Build timestamp injected at compile time; available as BuildConfig.BUILD_TIME.
+        buildConfigField "String", "BUILD_TIME", "\"${new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss z').format(new java.util.Date())}\""
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17"
+                abiFilters "arm64-v8a"
+                // Forward the shared GStreamer sysroot (set by env.sh) into CMake.
+                arguments "-DGSTREAMER_SYSROOT=${System.getenv('GSTREAMER_SYSROOT') ?: ''}"
+            }
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.protobuf:protobuf-java:3.24.4'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation 'com.google.android.material:material:1.6.1'
+
+    // gRPC Java dependencies
+    implementation 'io.grpc:grpc-okhttp:1.63.0'
+    implementation 'io.grpc:grpc-netty:1.63.0'
+    implementation 'io.grpc:grpc-protobuf:1.63.0'
+    implementation 'io.grpc:grpc-stub:1.63.0'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+}
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.24.4'
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.63.0'
+        }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {}
+            }
+            task.plugins {
+                grpc {}
+            }
+        }
+    }
+}
+
+clean {
+    delete protobuf.generatedFilesBaseDir
+}

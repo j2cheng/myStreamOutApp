@@ -1,0 +1,40 @@
+# Ignore Gradle, C++ build, and build output directories
+.gradle/
+.cxx/
+build/
+captures/
+externalNativeBuild/
+
+# ndk-build output tree, produced by app/src/main/gst/jni/{Android,Application}.mk
+# on every native build. All four dirs are regenerated from the shared
+# GStreamer sysroot; never commit them.
+# (Note: .gitignore does NOT support inline # comments -- keep patterns bare.)
+# libgstreamer_android.so + libc++_shared.so
+app/src/main/gst/libs/
+# ndk-build intermediate .o files
+app/src/main/gst/obj/
+# auto-generated org/freedesktop/gstreamer/GStreamer.java etc.
+app/src/main/gst/src/
+# staged linker inputs for libgstreamer_android.so
+app/src/main/gst/gst-android-build/
+
+# Machine-specific SDK/NDK paths. build_android.sh rewrites this file
+# from platforms/android/env.sh on every run, so it must not be tracked.
+local.properties
+
+# Signing keys and other local release materials should never be published.
+*.jks
+*.keystore
+*.pk8
+*.pem
+X80/
+
+# IDE / editor scratch
+.idea/
+*.iml
+.vscode/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+

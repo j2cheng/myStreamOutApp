@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package streamout.v1; // Versioned and descriptive package
+
+service StreamoutService {
+  // --- Connection Test ---
+  rpc SayHello (HelloRequest) returns (HelloReply) {}
+
+  // --- Configuration & Control (Unary) ---
+  rpc StreamoutSetPort (StreamoutSetPortRequest)
+      returns (StreamoutActionResponse) {}
+  rpc StreamoutSetPipeline (StreamoutSetPipelineRequest)
+      returns (StreamoutActionResponse) {}
+  rpc StreamoutStart (StreamoutStartRequest)
+      returns (StreamoutActionResponse) {}
+  rpc StreamoutStop (StreamoutStopRequest)
+      returns (StreamoutActionResponse) {}
+  rpc StreamoutSetProductId (StreamoutSetProductIdRequest)
+      returns (StreamoutActionResponse) {}
+
+  // --- Events & Monitoring (Server-Streaming) ---
+  rpc StreamoutWatchStatus (StreamoutStatusRequest)
+      returns (stream StreamoutStatusResponse);
+
+  // --- Maintenance ---
+  rpc StreamoutServerDebug (StreamoutDebugRequest)
+      returns (StreamoutActionResponse) {}
+}
+
+// Enum values should be prefixed with the Enum name to avoid C++ conflicts
+enum StreamStatus {
+  STREAM_STATUS_UNSPECIFIED = 0;
+  STREAM_STATUS_READY = 1;
+  STREAM_STATUS_CLIENT_CONNECTED = 2;
+  STREAM_STATUS_STOPPED = 3;
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
+}
+
+message StreamoutSetPortRequest {
+  string port = 1;
+}
+
+message StreamoutSetPipelineRequest {
+  string pipeline = 1;
+}
+
+message StreamoutDebugRequest {
+  string debug_string = 1;
+}
+
+message StreamoutStartRequest {
+  int32 arg = 1;
+}
+
+message StreamoutStopRequest {
+  int32 arg = 1;
+}
+
+message StreamoutSetProductIdRequest {
+  int32 id = 1;
+}
+
+message StreamoutActionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message StreamoutStatusRequest {
+  int32 id = 1;
+}
+
+message StreamoutStatusResponse {
+  int32 stream_id = 1;
+  StreamStatus status_code = 2; // Cleaned up field name
+  string status_info = 3;      // Cleaned up field name
+}
