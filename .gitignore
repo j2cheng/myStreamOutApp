@@ -28,6 +28,7 @@ local.properties
 *.pk8
 *.pem
 X80/
+sign_with_platform_key.sh
 
 # IDE / editor scratch
 .idea/
