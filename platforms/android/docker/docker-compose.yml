@@ -1,0 +1,87 @@
+# docker-compose for the streamOutApp Android builder.
+#
+# Usage (from repo root):
+#
+#   # Step 1 — build the image (host tools only, no SDK/NDK/GStreamer yet):
+#   docker compose -f platforms/android/docker/docker-compose.yml build
+#
+#   # Open an interactive shell inside the container. The repo is bind-mounted
+#   # at /workspace and $HOME (inside the container) is a named volume so the
+#   # Android SDK/NDK and the Cerbero GStreamer build survive `docker compose
+#   # down` and image rebuilds.
+#   docker compose -f platforms/android/docker/docker-compose.yml run --rm builder
+#
+#   # Inside the container, run steps 2 -> 4:
+#   . ./env.sh
+#   ./platforms/android/scripts/install_sdk_ndk.sh      # Step 2
+#   ./platforms/android/scripts/build_gstreamer.sh      # Step 3
+#   ./build_android.sh debug                             # Step 4
+#
+# One-shot equivalents (no interactive shell) are provided via the
+# `install-sdk-ndk`, `build-gstreamer`, and `build-app` service profiles.
+
+services:
+  builder:
+    build:
+      context: ../../..                       # repo root
+      dockerfile: platforms/android/docker/Dockerfile
+      args:
+        USER_UID: "${USER_UID:-1000}"
+        USER_GID: "${USER_GID:-1000}"
+    image: streamoutapp_builder:latest
+    container_name: streamoutapp-android-builder
+    working_dir: /workspace
+    tty: true
+    stdin_open: true
+    environment:
+      # env.sh derives ANDROID_HOME / CERBERO_HOME / GSTREAMER_PREFIX from
+      # $REPO_ROOT/platforms/android/cache, so the toolchain, cerbero
+      # checkout and gstreamer sysroot live inside the bind-mounted repo and
+      # survive `docker compose down -v`. Only the shared env file location
+      # is overridden here so it lands in the container's $HOME.
+      SHARED_ANDROID_ENV_DIR: /home/builder/shared/platforms/android
+    volumes:
+      - ../../..:/workspace                                # repo bind-mount (includes platforms/android/cache)
+      - builder-home:/home/builder                         # cerbero's own ~/.cache/cerbero-sources download cache
+      - builder-gradle:/home/builder/.gradle               # Gradle cache
+      # Host git identity + SSH keys. Read-only so the container can't corrupt
+      # them. Requires the container user's UID/GID (USER_UID/USER_GID build
+      # args, default 1000:1000) to match the host owner of these files;
+      # otherwise ssh will reject the key on strict permission checks.
+      - ${HOME}/.ssh:/home/builder/.ssh:ro
+      - ${HOME}/.gitconfig:/home/builder/.gitconfig:ro
+    command: ["/bin/bash"]
+
+  # Step 2: install Android SDK + NDK (idempotent).
+  install-sdk-ndk:
+    extends:
+      service: builder
+    profiles: ["install"]
+    command: >
+      bash -lc ". /workspace/env.sh &&
+                /workspace/platforms/android/scripts/install_sdk_ndk.sh"
+
+  # Step 3: build GStreamer via Cerbero (long — first run ~1h).
+  build-gstreamer:
+    extends:
+      service: builder
+    profiles: ["gstreamer"]
+    command: >
+      bash -lc ". /workspace/env.sh &&
+                /workspace/platforms/android/scripts/build_gstreamer.sh"
+
+  # Step 4: build the Android APK.
+  # gradlew + build_android.sh are tracked mode 0644 in the repo; CI chmods
+  # them at runtime (see .github/workflows/android.yml), so mirror that here.
+  build-app:
+    extends:
+      service: builder
+    profiles: ["app"]
+    command: >
+      bash -lc ". /workspace/env.sh &&
+                chmod +x /workspace/gradlew /workspace/build_android.sh &&
+                /workspace/build_android.sh debug"
+
+volumes:
+  builder-home:
+  builder-gradle:

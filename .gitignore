@@ -22,6 +22,10 @@ app/src/main/gst/gst-android-build/
 # from platforms/android/env.sh on every run, so it must not be tracked.
 local.properties
 
+# In-repo toolchain cache: Android SDK/NDK, Cerbero checkout, GStreamer
+# sysroot. Layout is defined by env.sh (CACHE_DIR / SRC_DIR / INSTALL_DIR).
+platforms/android/cache/
+
 # Signing keys and other local release materials should never be published.
 *.jks
 *.keystore
