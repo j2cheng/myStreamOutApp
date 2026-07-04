@@ -50,6 +50,14 @@ jobs:
             https://gitlab.freedesktop.org/gstreamer/cerbero.git \
             "${RUNNER_TEMP}/cerbero"
 
+      - name: Refresh apt package index
+        # The Azure apt mirror used by GitHub-hosted runners can serve a stale
+        # Packages index that still references superseded .deb versions
+        # (e.g. libcurl4-openssl-dev 8.5.0-2ubuntu10.9). Cerbero's bootstrap
+        # runs `apt-get install` without an update first, which then 404s.
+        # Refreshing the index here avoids the transient failure.
+        run: sudo apt-get update -y
+
       - name: Bootstrap Cerbero for Android arm64
         working-directory: ${{ runner.temp }}/cerbero
         run: |
